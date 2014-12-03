@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            name="Test Data-analysis Editor"
+            extensions="java"
+            icon="icons/sample.gif"
+            contributorClass="testda.editors.TestDAEditorContributor"
+            class="testda.editors.TestDAEditor"
+            id="testda.editors.TestDAEditor">
+      </editor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            name="TestDA Wizards"
+            id="testda">
+      </category>
+      <wizard
+            name="Test Data-analysis Editor file"
+            icon="icons/sample.gif"
+            category="testda"
+            class="testda.wizards.TestDANewWizard"
+            id="testda.wizards.TestDANewWizard">
+      </wizard>
+   </extension>
+
+</plugin>
