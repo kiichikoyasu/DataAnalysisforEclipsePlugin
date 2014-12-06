@@ -239,7 +239,6 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 //			visitor.printTreeInfo();
 			visitor.printTable();
 			visitor.printBlockList();
-//			visitor.printTreeInfo();
 			System.out.println();
 		}
 		
