@@ -1,11 +1,11 @@
 package testda.editors;
 
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -15,6 +15,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaModel;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IParent;
 import org.eclipse.jdt.core.JavaCore;
@@ -22,7 +23,6 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
@@ -224,8 +224,13 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 		IJavaModel model = JavaCore.create(root);
 		/* JavaModelあたりからcompilationunitを作らないとバインディング情報が手に入らない */
 		
+		IFileEditorInput input = (IFileEditorInput)editor.getEditorInput();
+		IFile file = input.getFile();
+		IProject project = file.getProject();
+		IJavaProject javaProject = JavaCore.create(project);
+		
 		/* ICompilationUnitを集める */
-		visitChild(model);
+		visitChild(javaProject);
 		
 		StringBuilder sb = new StringBuilder();
 		
