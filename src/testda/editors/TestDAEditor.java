@@ -227,6 +227,8 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 		/* ICompilationUnit‚ğW‚ß‚é */
 		visitChild(model);
 		
+		StringBuilder sb = new StringBuilder();
+		
 		for (int i = 0; i < compilationUnits.size(); i++){
 			ASTParser parser = ASTParser.newParser(AST.JLS4);
 			parser.setSource(compilationUnits.get(i));
@@ -234,11 +236,15 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 //			parser.setEnvironment(, sourcepathEntries, null, true)
 			ASTNode node = parser.createAST(new NullProgressMonitor());
 			TestDAASTVisitor visitor = new TestDAASTVisitor();
-			System.out.println(compilationUnits.get(i).getPath().toString());
-			node.accept(visitor);
+			MethodVisitor methodVisitor = new MethodVisitor();
+//			System.out.println(compilationUnits.get(i).getPath().toString());
+			sb.append(compilationUnits.get(i).getPath().toString() + "\n");
+//			node.accept(visitor);
+			node.accept(methodVisitor);
+			sb.append(methodVisitor.getMethodInvocationList());
 //			visitor.printTreeInfo();
-			visitor.printTable();
-			visitor.printBlockList();
+//			visitor.printTable();
+//			visitor.printBlockList();
 			System.out.println();
 		}
 		
