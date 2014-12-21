@@ -274,7 +274,8 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 		ASTVisitor visitor = new TestDAASTVisitor();
 		node.accept(visitor);*/
 
-		text.setText(source);
+//		text.setText(source);
+		text.setText(sb.toString());
 	}
 	/**
 	 * @param model
