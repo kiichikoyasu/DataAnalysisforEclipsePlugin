@@ -13,6 +13,7 @@ import java.util.Deque;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ConstructorInvocation;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -30,18 +31,16 @@ public class MethodVisitor extends ASTVisitor {
 	private final static String LINE_SEPARATOR = System.getProperty("line.separator");
 	
 	private String outputFN;
+	private String packagePath;
 	private StringBuilder sb;
 	private boolean isInInstanceMethod;
 	private Deque<StringBuilder> usingSBStack, finishSBStack;
 	private Deque<Boolean> instanceFlagStack;
 	
-	public MethodVisitor(){
-		this("output.txt");
-	}
-	
-	public MethodVisitor(String outputFileName){
+	public MethodVisitor(String outputFileName, String packagePath){
 		super();
 		this.outputFN = outputFileName;
+		this.packagePath = packagePath;
 		this.sb = new StringBuilder();
 		this.isInInstanceMethod = false;
 		this.usingSBStack = new ArrayDeque<StringBuilder>();
@@ -109,21 +108,50 @@ public class MethodVisitor extends ASTVisitor {
 	@Override
 	public void endVisit(ClassInstanceCreation node) {
 		if(this.isInInstanceMethod){
-			ITypeBinding classBinding = node.resolveTypeBinding();
+			ITypeBinding classBind = node.resolveTypeBinding();
 			// .new をつけるべき？本筋からはずれるので後回し
 //			System.out.println(classBinding.getQualifiedName());
-			if(classBinding.isAnonymous()){
-				/* 無名クラスなので・・・ */
-				ITypeBinding bind = classBinding.getSuperclass();
-				if(bind != null){
-					this.sb.append(bind.getQualifiedName() + " ");
+			if(classBind.isAnonymous()){
+				/* 匿名クラスなので必ずスーパークラスかインターフェースがある */
+				ITypeBinding scBind = classBind.getSuperclass();
+				if(scBind != null){
+					classBind = scBind;
 				} else {
-					bind = classBinding.getInterfaces()[0];
-					this.sb.append(bind.getQualifiedName() + " ");
+					/* 匿名クラスはインターフェースを1つしかimplementできないはず・・・ */
+					classBind = classBind.getInterfaces()[0];
 				}
-			} else {
-				this.sb.append(classBinding.getQualifiedName() + " ");
+			} 
+			
+			/* インスタンス化するクラスを特定したところで自分の書いたコードかどうか探る */
+			while(classBind.isFromSource()){
+				ITypeBinding scBind = classBind.getSuperclass();
+				if(scBind != null){
+					classBind = scBind;
+				}else{
+					ITypeBinding[] iBinds = classBind.getInterfaces();
+					for(int i = 0; i < iBinds.length; ++i){
+						if(!iBinds[i].isFromSource()){
+							classBind = iBinds[i];
+							break;
+						}
+					}
+				}
 			}
+			
+			/* Objectクラスまで戻ってしまった場合は元のクラスの情報にする */
+			if(classBind.getSuperclass() == null){
+				classBind = node.resolveTypeBinding();
+				if(classBind.isAnonymous()){
+					ITypeBinding scBind = classBind.getSuperclass();
+					if(scBind != null){
+						classBind = scBind;
+					}else{
+						classBind = classBind.getInterfaces()[0];
+					}
+				}
+			}
+			
+			this.sb.append(classBind.getQualifiedName() + ".new" + " ");
 		}
 		super.endVisit(node);
 	}
@@ -155,6 +183,61 @@ public class MethodVisitor extends ASTVisitor {
 		if(this.isInInstanceMethod){
 			IMethodBinding methodBinding = node.resolveMethodBinding();
 			ITypeBinding classBinding = methodBinding.getDeclaringClass();
+			
+/*			if(classBinding.isFromSource()){
+				classBinding = classBinding.getSuperclass();
+				if(classBinding != null){
+					IMethodBinding[] mBindings = classBinding.getDeclaredMethods();
+					for(int i = 0; i < mBindings.length; ++i){
+						System.out.println(methodBinding.overrides(mBindings[i]));
+					}
+				}
+			}*/
+			
+			/* 自分で書いてないコードまで辿る */
+			while(classBinding.isFromSource()){
+				ITypeBinding superClassBinding = classBinding.getSuperclass();
+				boolean isOverride = false;
+				if(superClassBinding != null){
+					IMethodBinding[] mBindings = superClassBinding.getDeclaredMethods();
+					for(int i = 0; i < mBindings.length; ++i){
+						isOverride |= methodBinding.overrides(mBindings[i]);
+					}
+				}
+				
+				/* オーバーライドが見つかったら次の段階を探る */
+				if(isOverride){
+					classBinding = superClassBinding;
+					continue;
+				}
+				
+				/* スーパークラスにオーバーライドが無ければインターフェースを探す */
+				ITypeBinding[] interfaceBindings = classBinding.getInterfaces();
+				int j = 0;
+				if(!isOverride){
+					/* オーバーライドが見つからなければ探し続ける */
+					for(j = 0; j < interfaceBindings.length && !isOverride; ++j){
+						IMethodBinding[] mBindings = interfaceBindings[j].getDeclaredMethods();
+						for(int k = 0; k < mBindings.length; ++k){
+							isOverride |= methodBinding.overrides(mBindings[k]);
+						}
+					}
+				}
+				
+				/* オーバーライドが見つかったら次の段階を探る */
+				if(isOverride){
+					classBinding = interfaceBindings[j - 1];
+					continue;
+				}
+				
+				/* オーバーライドされて無い場合はそこで終了 */
+				/* クラスバインディングを元に戻してファイルに書き込む */
+				if(!isOverride){
+					classBinding = methodBinding.getDeclaringClass();
+					break;
+				}
+			}
+//			System.out.println(classBinding.isFromSource() + " " + classBinding.getBinaryName());
 //			System.out.println(classBinding.getQualifiedName() + "." +  methodBinding.getName());
 			this.sb.append(classBinding.getQualifiedName() + "." + methodBinding.getName() + " ");
 		}
@@ -177,6 +260,50 @@ public class MethodVisitor extends ASTVisitor {
 		if(this.isInInstanceMethod){
 			IMethodBinding methodBinding = node.resolveMethodBinding();
 			ITypeBinding classBinding = methodBinding.getDeclaringClass();
+
+			/* 自分で書いてないコードまで辿る */
+			while(classBinding.isFromSource()){
+				ITypeBinding superClassBinding = classBinding.getSuperclass();
+				boolean isOverride = false;
+				if(superClassBinding != null){
+					IMethodBinding[] mBindings = superClassBinding.getDeclaredMethods();
+					for(int i = 0; i < mBindings.length; ++i){
+						isOverride |= methodBinding.overrides(mBindings[i]);
+					}
+				}
+				
+				/* オーバーライドが見つかったら次の段階を探る */
+				if(isOverride){
+					classBinding = superClassBinding;
+					continue;
+				}
+				
+				/* スーパークラスにオーバーライドが無ければインターフェースを探す */
+				ITypeBinding[] interfaceBindings = classBinding.getInterfaces();
+				int j = 0;
+				if(!isOverride){
+					/* オーバーライドが見つからなければ探し続ける */
+					for(j = 0; j < interfaceBindings.length && !isOverride; ++j){
+						IMethodBinding[] mBindings = interfaceBindings[j].getDeclaredMethods();
+						for(int k = 0; k < mBindings.length; ++k){
+							isOverride |= methodBinding.overrides(mBindings[k]);
+						}
+					}
+				}
+				
+				/* オーバーライドが見つかったら次の段階を探る */
+				if(isOverride){
+					classBinding = interfaceBindings[j - 1];
+					continue;
+				}
+				
+				/* オーバーライドされて無い場合はそこで終了 */
+				/* クラスバインディングを元に戻してファイルに書き込む */
+				if(!isOverride){
+					classBinding = methodBinding.getDeclaringClass();
+					break;
+				}
+			}
 //			System.out.println(classBinding.getQualifiedName() + "." +  methodBinding.getName());
 			this.sb.append(classBinding.getQualifiedName() + "." + methodBinding.getName() + " ");
 		}

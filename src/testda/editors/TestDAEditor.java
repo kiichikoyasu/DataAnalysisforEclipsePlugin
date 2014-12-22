@@ -234,7 +234,7 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 		
 		StringBuilder sb = new StringBuilder();
 		/* 本当はeditor側で設定できるようにすべき */
-		String path = "/Users/koyasukiichi/Dropbox/master_thesis/jikken/MethodSequence/";
+		String myDirectoryPath = "/Users/koyasukiichi/Dropbox/master_thesis/jikken/MethodSequence/";
 		
 		for (int i = 0; i < compilationUnits.size(); i++){
 			ASTParser parser = ASTParser.newParser(AST.JLS4);
@@ -242,13 +242,24 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 			parser.setResolveBindings(true);
 //			parser.setEnvironment(, sourcepathEntries, null, true)
 			ASTNode node = parser.createAST(new NullProgressMonitor());
-			String projectPath = compilationUnits.get(i).getPath().toString();
-			String[] s = projectPath.split("\\.");
-			projectPath = s[0].replace("/", "#");
-			projectPath = projectPath.substring(1);
+			String rawProjectPath = compilationUnits.get(i).getPath().toString();
+//			String[] s = lowProjectPath.split("\\.");
+			String[] s = rawProjectPath.split("/");
+			/* sのlength - 1までつなげる */
+			String projectPath, sharpProjectPath;
+			StringBuilder psb = new StringBuilder();
+			StringBuilder spsb = new StringBuilder();
+			for (int j = 0; j < s.length - 1; ++j){
+				psb.append(s[j] + "/");
+				spsb.append(s[j] + "#");
+			}
+			/* ファイル名.javaが残っているのでファイル名を#の方にだけつける */
+			spsb.append(s[s.length - 1].split("\\.")[0]);
+			projectPath = psb.toString();
+			sharpProjectPath = spsb.toString();
 			/* パスの.javaを取り除いて"/"を"#"にすり替える */
 			TestDAASTVisitor visitor = new TestDAASTVisitor();
-			MethodVisitor methodVisitor = new MethodVisitor(path + projectPath + ".txt");
+			MethodVisitor methodVisitor = new MethodVisitor(myDirectoryPath + sharpProjectPath + ".txt", projectPath);
 //			System.out.println(compilationUnits.get(i).getPath().toString());
 			sb.append(compilationUnits.get(i).getPath().toString() + "\n");
 //			node.accept(visitor);
