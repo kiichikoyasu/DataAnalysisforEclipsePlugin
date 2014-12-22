@@ -3,6 +3,10 @@
  */
 package testda.editors;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -181,6 +185,22 @@ public class MethodVisitor extends ASTVisitor {
 	
 	public String getMethodInvocationList(){
 		return this.sb.toString();
+	}
+	
+	public void outputMethodInvocationList(){
+		File file = new File(this.outputFN);
+		
+		try {
+			FileWriter fw = new FileWriter(file);
+			BufferedWriter bw = new BufferedWriter(fw);
+			
+			bw.write(this.sb.toString());
+			
+			bw.close();
+			fw.close();
+		} catch (IOException e){
+			e.printStackTrace();
+		}
 	}
 
 }

@@ -233,6 +233,8 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 		visitChild(javaProject);
 		
 		StringBuilder sb = new StringBuilder();
+		/* –{“–‚Íeditor‘¤‚Åİ’è‚Å‚«‚é‚æ‚¤‚É‚·‚×‚« */
+		String path = "/Users/koyasukiichi/Dropbox/master_thesis/jikken/MethodSequence/";
 		
 		for (int i = 0; i < compilationUnits.size(); i++){
 			ASTParser parser = ASTParser.newParser(AST.JLS4);
@@ -240,13 +242,19 @@ public class TestDAEditor extends MultiPageEditorPart implements IResourceChange
 			parser.setResolveBindings(true);
 //			parser.setEnvironment(, sourcepathEntries, null, true)
 			ASTNode node = parser.createAST(new NullProgressMonitor());
+			String projectPath = compilationUnits.get(i).getPath().toString();
+			String[] s = projectPath.split("\\.");
+			projectPath = s[0].replace("/", "#");
+			projectPath = projectPath.substring(1);
+			/* ƒpƒX‚Ì.java‚ğæ‚èœ‚¢‚Ä"/"‚ğ"#"‚É‚·‚è‘Ö‚¦‚é */
 			TestDAASTVisitor visitor = new TestDAASTVisitor();
-			MethodVisitor methodVisitor = new MethodVisitor();
+			MethodVisitor methodVisitor = new MethodVisitor(path + projectPath + ".txt");
 //			System.out.println(compilationUnits.get(i).getPath().toString());
 			sb.append(compilationUnits.get(i).getPath().toString() + "\n");
 //			node.accept(visitor);
 			node.accept(methodVisitor);
 			sb.append(methodVisitor.getMethodInvocationList());
+			methodVisitor.outputMethodInvocationList();
 //			visitor.printTreeInfo();
 //			visitor.printTable();
 //			visitor.printBlockList();
